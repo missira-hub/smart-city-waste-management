@@ -1,67 +1,80 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  StyleSheet,
-} from "react-native";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "./firebaseConfig"; // Your Firebase config file
+import React, { useState } from 'react';
+import { View, TextInput, Button, Text, Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { auth, firestore } from '../firebaseConfig';
+import { useNavigation } from '@react-navigation/native';
 
-const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+const LoginScreen = () => {
+  const navigation = useNavigation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+
+
+const user = auth.currentUser;
+if (user) {
+  console.log("User is logged in: ", user);
+} else {
+  console.log("No user is logged in.");
+}
+
 
   const handleLogin = async () => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
       const user = userCredential.user;
 
-      if (user.emailVerified) {
-        // ✅ Navigate to Resident Dashboard (you can change this route)
-        navigation.navigate("ResidentDashboard");
+      if (!user.emailVerified) {
+        Alert.alert("🔒 Verify Email", "Please verify your email before logging in.");
+        await auth.signOut();
+        return;
+      }
+
+      // Fetch user data from Firestore
+      const userDoc = await firestore.collection('users').doc(user.uid).get();
+
+      if (!userDoc.exists) {
+        Alert.alert("🚫 Error", "User data not found.");
+        return;
+      }
+
+      const userData = userDoc.data();
+      const userRole = userData.role;
+
+      if (userRole === 'admin') {
+        navigation.navigate('AdminDashboard');
+      } else if (userRole === 'staff') {
+        if (!userData.isApproved) {
+          Alert.alert("⛔ Access Denied", "Your account is pending admin approval.");
+          await auth.signOut();
+          return;
+        }
+        navigation.navigate('StaffDashboard');
       } else {
-        Alert.alert(
-          "⚠️ Verify Email",
-          "Please verify your email before logging in.",
-          [{ text: "OK", style: "destructive" }]
-        );
+        navigation.navigate('ResidentDashboard');
       }
     } catch (error) {
-      console.error("Login error:", error.message);
-      Alert.alert(
-        "❌ Login Failed",
-        error.message,
-        [{ text: "OK", style: "destructive" }]
-      );
+      Alert.alert("Login Error", error.message);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back</Text>
-
+      <Text style={styles.title}>Smart City Waste Login</Text>
       <TextInput
         placeholder="Email"
         placeholderTextColor="#999"
         value={email}
         onChangeText={setEmail}
         style={styles.input}
-        keyboardType="email-address"
-        autoCapitalize="none"
       />
-
       <TextInput
         placeholder="Password"
         placeholderTextColor="#999"
+        secureTextEntry
         value={password}
         onChangeText={setPassword}
         style={styles.input}
-        secureTextEntry
       />
-
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
@@ -69,40 +82,39 @@ const LoginScreen = ({ navigation }) => {
   );
 };
 
-export default LoginScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f2f2f2", // light grey background
-    justifyContent: "center",
-    paddingHorizontal: 20,
+    backgroundColor: '#f2f2f2', // Light grey background
+    justifyContent: 'center',
+    padding: 20,
   },
   title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: "#b22222", // red
+    fontSize: 24,
     marginBottom: 30,
-    textAlign: "center",
+    color: '#cc0000', // Red
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   input: {
-    backgroundColor: "#e0e0e0", // light grey input
+    backgroundColor: '#fff',
     padding: 12,
-    borderRadius: 10,
-    fontSize: 16,
-    color: "#333",
+    borderRadius: 8,
     marginBottom: 15,
+    borderColor: '#ccc',
+    borderWidth: 1,
   },
   button: {
-    backgroundColor: "#d3d3d3", // lighter grey button
+    backgroundColor: '#cc0000', // Red
     padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   buttonText: {
-    color: "#b22222", // red text
-    fontWeight: "bold",
+    color: '#fff',
+    fontWeight: 'bold',
     fontSize: 16,
   },
 });
+
+export default LoginScreen;

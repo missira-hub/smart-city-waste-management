@@ -13,6 +13,11 @@ import StaffDashboard from './src/screens/StaffDashboard';
 import AdminRoleManager from './src/screens/AdminRoleManager';
 
 const Stack = createStackNavigator();
+{user?.role === 'admin' ? (
+  <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+) : (
+  <Stack.Screen name="Home" component={HomeScreen} />
+)}
 
 export default function App() {
   return (
