@@ -1,22 +1,24 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// import { collection, onSnapshot } from 'firebase/firestore'
+// import { db } from '../firebaseConfig';
+// import { auth } from '../firebaseConfig';
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCMr4zCQg2konNz7hhZeJuRPA128fPAJRQ",
-  authDomain: "sc-waste-management-app.firebaseapp.com",
-  databaseURL: "https://sc-waste-management-app-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "sc-waste-management-app",
-  storageBucket: "sc-waste-management-app.firebasestorage.app",
-  messagingSenderId: "716830739762",
-  appId: "1:716830739762:web:05956922010da019235b2b",
-  measurementId: "G-Q7KGVFB6DZ"
+  apiKey: "AIzaSyBSkkrUhG6cGrd1QvWgjLw_XNefLjN4mzM",
+  authDomain: "my-management-app-6f3f8.firebaseapp.com",
+  projectId: "my-management-app-6f3f8",
+  storageBucket: "my-management-app-6f3f8.firebasestorage.app",
+  messagingSenderId: "1060963915780",
+  appId: "1:1060963915780:web:8bf42d9b1446da616dfd51",
+  measurementId: "G-LY88G0V2M0"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+export { auth, db };

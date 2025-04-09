@@ -4,16 +4,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "../firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
-import { useNavigation } from "@react-navigation/native";
+import { auth } from "./firebaseConfig"; // Your Firebase config file
 
-const LoginScreen = () => {
-  const navigation = useNavigation();
+const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -22,111 +19,90 @@ const LoginScreen = () => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      if (!user.emailVerified) {
-        Alert.alert("Email not verified", "Please verify your email before logging in.");
-        return;
-      }
-
-      // Get role from Firestore
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-
-      if (userDoc.exists()) {
-        const role = userDoc.data().role;
-
-        // Navigate based on role
-        if (role === "admin") {
-          navigation.navigate("AdminDashboard");
-        } else if (role === "staff") {
-          navigation.navigate("StaffDashboard");
-        } else {
-          navigation.navigate("ResidentDashboard");
-        }
+      if (user.emailVerified) {
+        // ✅ Navigate to Resident Dashboard (you can change this route)
+        navigation.navigate("ResidentDashboard");
       } else {
-        Alert.alert("Error", "User role not found. Contact admin.");
+        Alert.alert(
+          "⚠️ Verify Email",
+          "Please verify your email before logging in.",
+          [{ text: "OK", style: "destructive" }]
+        );
       }
     } catch (error) {
-      console.log("Login error:", error);
-      Alert.alert("Login Failed", "Incorrect credentials or error logging in.");
+      console.error("Login error:", error.message);
+      Alert.alert(
+        "❌ Login Failed",
+        error.message,
+        [{ text: "OK", style: "destructive" }]
+      );
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Welcome Back</Text>
 
       <TextInput
-        style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#888"
+        placeholderTextColor="#999"
+        value={email}
         onChangeText={setEmail}
+        style={styles.input}
         keyboardType="email-address"
         autoCapitalize="none"
       />
 
       <TextInput
-        style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#888"
-        secureTextEntry
+        placeholderTextColor="#999"
+        value={password}
         onChangeText={setPassword}
+        style={styles.input}
+        secureTextEntry
       />
 
-      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Log In</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => navigation.navigate("SignupScreen")}>
-        <Text style={styles.signupText}>Don't have an account? Sign Up</Text>
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
+export default LoginScreen;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#D3D3D3",
+    backgroundColor: "#f2f2f2", // light grey background
     justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "bold",
-    color: "#8B0000",
-    marginBottom: 20,
+    color: "#b22222", // red
+    marginBottom: 30,
+    textAlign: "center",
   },
   input: {
-    width: "100%",
-    height: 50,
-    backgroundColor: "#F5F5F5",
-    borderColor: "#8B0000",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 15,
+    backgroundColor: "#e0e0e0", // light grey input
+    padding: 12,
+    borderRadius: 10,
     fontSize: 16,
-    marginBottom: 15,
     color: "#333",
+    marginBottom: 15,
   },
-  loginButton: {
-    width: "100%",
-    height: 50,
-    backgroundColor: "#8B0000",
-    justifyContent: "center",
+  button: {
+    backgroundColor: "#d3d3d3", // lighter grey button
+    padding: 14,
+    borderRadius: 10,
     alignItems: "center",
-    borderRadius: 8,
     marginTop: 10,
   },
   buttonText: {
-    color: "#fff",
-    fontSize: 18,
+    color: "#b22222", // red text
     fontWeight: "bold",
-  },
-  signupText: {
-    marginTop: 15,
-    color: "#8B0000",
     fontSize: 16,
   },
 });
-
-export default LoginScreen;
