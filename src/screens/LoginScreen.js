@@ -21,7 +21,7 @@ if (user) {
   const handleLogin = async () => {
     try {
       const userCredential = await auth.signInWithEmailAndPassword(email, password);
-      const user = userCredential.user;
+      const user = userCredential?.user;
 
       if (!user.emailVerified) {
         Alert.alert("🔒 Verify Email", "Please verify your email before logging in.");
