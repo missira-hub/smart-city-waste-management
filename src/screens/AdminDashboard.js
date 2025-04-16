@@ -58,13 +58,36 @@ const AdminDashboard = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#f3f3f3' },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
-  subtitle: { fontSize: 18, marginBottom: 15 },
-  card: { backgroundColor: '#fff', padding: 15, marginBottom: 10, borderRadius: 10 },
-  text: { fontSize: 16 },
-  button: { marginTop: 8, backgroundColor: 'green', padding: 10, borderRadius: 8 },
-  buttonText: { color: 'white', fontWeight: 'bold', textAlign: 'center' },
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#f3f3f3' 
+  },
+  title: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    marginBottom: 10 
+  },
+  subtitle: { 
+    fontSize: 18, 
+    marginBottom: 15
+  },
+  card: { 
+    backgroundColor: '#fff', 
+    padding: 15, marginBottom: 10, 
+    borderRadius: 10 
+  },
+  text: { 
+    fontSize: 16 
+  },
+  button: { marginTop: 8, 
+    backgroundColor: 'green', 
+    padding: 10, 
+    borderRadius: 8 
+  },
+  buttonText: { color: 'white', 
+    fontWeight: 'bold', 
+    textAlign: 'center' },
 });
 
 export default AdminDashboard;

@@ -1,12 +1,5 @@
 import React, { useState } from "react";
-import {
-  View,
-  TextInput,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from "react-native";
+import {View,TextInput,Text,TouchableOpacity,StyleSheet,Alert} from "react-native";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { setDoc, doc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
@@ -32,6 +25,11 @@ const SignupScreen = () => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      // Check if user is created successfully
+      if (!users) {
+        Alert.alert("Signup Failed", "User creation failed. Please try again.");
+        return;
+      }
 
       // Set user role to "resident" by default
       await setDoc(doc(db, "users", user.uid), {
