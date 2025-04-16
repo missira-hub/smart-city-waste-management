@@ -13,7 +13,7 @@ const LoginScreen = () => {
   const handleLogin = async () => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const user = userCredential?.user;
 
       if (!user.emailVerified) {
         Alert.alert("Verify Email", "Please verify your email before logging in.");

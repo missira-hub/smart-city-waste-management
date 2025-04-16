@@ -24,9 +24,16 @@ const SignupScreen = () => {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const user = userCredential?.user;
+      if (!user) {
+        Alert.alert("Signup Failed", "User creation failed. Please try again.");  
+        return;
+      }
+      console.log("usercredential", userCredential);
+      console.log("user", user);
+
       // Check if user is created successfully
-      if (!users) {
+      if (!user) {
         Alert.alert("Signup Failed", "User creation failed. Please try again.");
         return;
       }
