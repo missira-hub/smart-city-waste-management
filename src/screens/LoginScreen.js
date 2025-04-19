@@ -1,111 +1,137 @@
 import React, { useState } from 'react';
-import { View, TextInput, Text, Alert, StyleSheet, TouchableOpacity } from 'react-native';
-import { auth, firestore } from '../firebaseConfig';
+import {
+  View,Text,TextInput,TouchableOpacity,StyleSheet,Alert,ActivityIndicator } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { useNavigation } from '@react-navigation/native';
+import { auth, db } from '../firebaseConfig';
 
-const LoginScreen = () => {
-  const navigation = useNavigation();
+export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential?.user;
+      const user = userCredential.user;
 
       if (!user.emailVerified) {
-        Alert.alert("Verify Email", "Please verify your email before logging in.");
+        Alert.alert('Email not verified', 'Please verify your email before logging in.');
+        setLoading(false);
         return;
       }
 
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      const userDocRef = doc(db, 'users', user.uid);
+      const userSnapshot = await getDoc(userDocRef);
 
-      if (!userDoc.exists()) {
-        Alert.alert("Error", "User data not found.");
-        return;
+      if (!userSnapshot.exists()) {
+        throw new Error("User document not found in Firestore.");
       }
 
-      const userData = userDoc.data();
+      const userData = userSnapshot.data();
       const role = userData.role;
 
-      if (role === 'admin') {
-        navigation.navigate('AdminDashboard');
+      // Navigate based on role
+      if (role === 'resident') {
+        navigation.replace('ResidentDashboard');
       } else if (role === 'staff') {
-        if (!userData.isApproved) {
-          Alert.alert("Access Denied", "Your account is pending admin approval.");
-          return;
-        }
-        navigation.navigate('StaffDashboard');
+        navigation.replace('StaffDashboard');
+      } else if (role === 'admin') {
+        navigation.replace('AdminDashboard');
       } else {
-        navigation.navigate('ResidentDashboard');
+        Alert.alert('Unknown role', 'Your user role is not recognized.');
       }
 
     } catch (error) {
-      Alert.alert("Login Error", error.message);
+      console.error(error);
+      Alert.alert('Login Error', error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Smart City Waste Login</Text>
+      <Text style={styles.header}>Login</Text>
+
       <TextInput
+        style={styles.input}
         placeholder="Email"
+        placeholderTextColor="#999"
         value={email}
         onChangeText={setEmail}
-        style={styles.input}
         autoCapitalize="none"
         keyboardType="email-address"
       />
+
       <TextInput
+        style={styles.input}
         placeholder="Password"
+        placeholderTextColor="#999"
         value={password}
         onChangeText={setPassword}
-        style={styles.input}
         secureTextEntry
       />
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
+
+      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Login</Text>
+        )}
       </TouchableOpacity>
+
+      <Text style={styles.linkText} onPress={() => navigation.navigate('SignupScreen')}>
+        Don't have an account? Sign up
+      </Text>
+
+      <Text style={styles.linkText} onPress={() => navigation.navigate('ResetPasswordScreen')}>
+        Forgot Password?
+      </Text>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f2f2f2',
+    backgroundColor: '#f2f2f2', // light grey
     justifyContent: 'center',
     padding: 20,
   },
-  title: {
-    fontSize: 24,
-    color: '#cc0000',
+  header: {
+    fontSize: 32,
     fontWeight: 'bold',
+    color: 'red',
     marginBottom: 30,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 15,
+    height: 50,
+    borderColor: 'red',
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    backgroundColor: '#fff',
+    color: '#000',
   },
   button: {
-    backgroundColor: '#cc0000',
-    padding: 14,
-    borderRadius: 8,
+    backgroundColor: 'red',
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginTop: 10,
     alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 16,
   },
+  linkText: {
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 20,
+  },
 });
-
-export default LoginScreen;

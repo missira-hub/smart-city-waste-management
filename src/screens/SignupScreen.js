@@ -1,144 +1,124 @@
-import React, { useState } from "react";
-import {View,TextInput,Text,TouchableOpacity,StyleSheet,Alert} from "react-native";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { setDoc, doc } from "firebase/firestore";
-import { auth, db } from "../firebaseConfig";
-import { useNavigation } from "@react-navigation/native";
+// src/screens/SignupScreen.js
+import React, { useState } from 'react';
+import { View, TextInput, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebaseConfig';
 
-const SignupScreen = () => {
-  const navigation = useNavigation();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+export default function SignupScreen({ navigation }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSignup = async () => {
-    if (!email || !password || !confirmPassword) {
-      Alert.alert("Missing Fields", "Please fill in all fields.");
-      return;
-    }
-
     if (password !== confirmPassword) {
-      Alert.alert("Password Mismatch", "Passwords do not match.");
+      Alert.alert('Error', 'Passwords do not match!');
       return;
     }
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential?.user;
-      if (!user) {
-        Alert.alert("Signup Failed", "User creation failed. Please try again.");  
-        return;
-      }
-      console.log("usercredential", userCredential);
-      console.log("user", user);
+      const user = userCredential.user;
 
-      // Check if user is created successfully
-      if (!user) {
-        Alert.alert("Signup Failed", "User creation failed. Please try again.");
-        return;
-      }
+      await sendEmailVerification(user);
 
-      // Set user role to "resident" by default
-      await setDoc(doc(db, "users", user.uid), {
+      // Save user role to Firestore
+      await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
-        role: "resident",
+        role: 'resident',
       });
 
-      Alert.alert("Success", "Signup successful! You can now log in.");
-      navigation.navigate("LoginScreen");
+      Alert.alert('Success', 'Signup successful. Please verify your email.');
+      navigation.navigate('Login');
     } catch (error) {
-      Alert.alert("Signup Failed", error.message);
+      Alert.alert('Error', error.message);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign Up</Text>
+      <Text style={styles.title}>Create Account</Text>
 
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#888"
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
+        placeholderTextColor="grey"
         value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
 
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#888"
+        placeholderTextColor="grey"
         secureTextEntry
-        onChangeText={setPassword}
         value={password}
+        onChangeText={setPassword}
       />
 
       <TextInput
         style={styles.input}
         placeholder="Confirm Password"
-        placeholderTextColor="#888"
+        placeholderTextColor="grey"
         secureTextEntry
-        onChangeText={setConfirmPassword}
         value={confirmPassword}
+        onChangeText={setConfirmPassword}
       />
 
-      <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
+      <TouchableOpacity style={styles.button} onPress={handleSignup}>
         <Text style={styles.buttonText}>Sign Up</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("LoginScreen")}>
-        <Text style={styles.loginText}>Already have an account? Log In</Text>
+      <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')}>
+        <Text style={styles.loginText}>Already have an account? Login</Text>
       </TouchableOpacity>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#D3D3D3",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'lightgrey',
     padding: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#8B0000",
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'red',
     marginBottom: 20,
   },
   input: {
-    width: "100%",
+    width: '100%',
     height: 50,
-    backgroundColor: "#F5F5F5",
-    borderColor: "#8B0000",
+    borderColor: 'red',
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    fontSize: 16,
+    borderRadius: 5,
     marginBottom: 15,
-    color: "#333",
+    paddingLeft: 10,
+    backgroundColor: 'white',
   },
-  signupButton: {
-    width: "100%",
+  button: {
+    width: '100%',
     height: 50,
-    backgroundColor: "#8B0000",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 8,
+    backgroundColor: 'red',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 5,
     marginTop: 10,
   },
   buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  loginText: {
-    marginTop: 15,
-    color: "#8B0000",
+    color: 'white',
+    fontWeight: 'bold',
     fontSize: 16,
   },
+  loginText: {
+    color: 'red',
+    fontSize: 14,
+    marginTop: 15,
+  },
 });
-
-export default SignupScreen;

@@ -5,10 +5,10 @@ import { View, Image, StyleSheet } from 'react-native';
 const LoadingScreen = ({ navigation }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.replace("SignupScreen"); // Redirect to Signup
-    }, 3000); // Wait for 3 seconds
+      navigation.replace('SignupScreen'); // Redirect to SignupScreen after 3 seconds
+    }, 3000);
 
-    return () => clearTimeout(timer); // Cleanup timer
+    return () => clearTimeout(timer); // Cleanup timer on component unmount
   }, [navigation]);
 
   return (
