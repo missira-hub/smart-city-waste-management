@@ -1,11 +1,10 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+// src/firebaseConfig.js
+
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import {initializeAuth,getReactNativePersistence,} from 'firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from 'firebase/auth';
 
-
-
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCMr4zCQg2konNz7hhZeJuRPA128fPAJRQ",
   authDomain: "sc-waste-management-app.firebaseapp.com",
@@ -16,15 +15,13 @@ const firebaseConfig = {
   appId: "1:716830739762:web:0c965ea893a49a80235b2b",
   measurementId: "G-LMB1G56KBY"
 };
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
 
-// Set persistent auth state
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage),
-});
+// Initialize Firebase only once
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Firestore
+// Firebase services
+const auth = getAuth(app);
 const db = getFirestore(app);
 
 export { app, auth, db };
+export default app;
