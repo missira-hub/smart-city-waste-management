@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { setDoc, doc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 
@@ -21,13 +21,19 @@ export default function SignupScreen({ navigation }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Create corresponding document in Firestore
+      // 2. Send email verification
+      await sendEmailVerification(user);
+
+      // 3. Create corresponding document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         role: 'resident', // default role
       });
 
-      Alert.alert('Success', 'Account created! Please log in.');
+      Alert.alert(
+        'Account Created',
+        'A verification email has been sent to your email address. Please verify your email before logging in.'
+      );
       navigation.replace('LoginScreen'); // Navigate to login screen
 
     } catch (error) {
@@ -79,7 +85,7 @@ export default function SignupScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f2f2f2', // light grey
+    backgroundColor: '#f2f2f2',
     justifyContent: 'center',
     padding: 20,
   },

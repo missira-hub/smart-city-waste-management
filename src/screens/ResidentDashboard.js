@@ -1,115 +1,210 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity } from 'react-native';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Button, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { getAuth } from 'firebase/auth';
+import { doc, getDoc, updateDoc, collection, addDoc, getDocs } from 'firebase/firestore';
+import * as Location from 'expo-location';
+import { db } from '../firebaseConfig'; // your firebase config
 
-const ResidentDashboard = () => {
-  const [bins, setBins] = useState([]);
-  const [location, setLocation] = useState('');
-  const [drivers, setDrivers] = useState([]);
-  const [paymentMethod, setPaymentMethod] = useState('');
+export default function ResidentDashboard() {
+  const [userLocation, setUserLocation] = useState({ latitude: 0, longitude: 0 });
+  const [locationExists, setLocationExists] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [collectionSchedule, setCollectionSchedule] = useState([]);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'bins'), (snapshot) => {
-      const binData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setBins(binData);
-    });
-
-    const unsubDrivers = onSnapshot(collection(db, 'drivers'), (snapshot) => {
-      const driverData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setDrivers(driverData);
-    });
-
-    return () => {
-      unsubscribe();
-      unsubDrivers();
-    };
+    fetchUserLocation();
+    fetchCollectionSchedule();
   }, []);
 
-  const getColor = (status) => {
-    switch (status) {
-      case 'empty': return 'green';
-      case 'half-full': return 'yellow';
-      case 'full': return 'red';
-      default: return 'grey';
+  const fetchUserLocation = async () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (user) {
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const locationData = userSnap.data().location;
+          if (locationData) {
+            setUserLocation(locationData);
+            setLocationExists(true);
+          } else {
+            setLocationExists(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching location:', error);
+        Alert.alert('Failed to fetch location');
+      }
+    }
+    setLoading(false);
+  };
+
+  const updateLocationInFirestore = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permission to access location was denied');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          location: { latitude, longitude },
+        });
+
+        setUserLocation({ latitude, longitude });
+        setLocationExists(true);
+
+        Alert.alert('Location updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error updating location:', error);
+      Alert.alert('Failed to update location');
+    }
+  };
+
+  const requestBinPickup = async () => {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (user) {
+        await addDoc(collection(db, 'pickupRequests'), {
+          userId: user.uid,
+          location: userLocation,
+          status: 'pending',
+          timestamp: new Date(),
+        });
+
+        Alert.alert('Pickup Requested', 'Your bin pickup has been requested.');
+      }
+    } catch (error) {
+      console.error('Error requesting pickup:', error);
+      Alert.alert('Failed to request pickup');
+    }
+  };
+
+  const reportOverflowingBin = async () => {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (user) {
+        await addDoc(collection(db, 'overflowReports'), {
+          userId: user.uid,
+          location: userLocation,
+          status: 'reported',
+          timestamp: new Date(),
+        });
+
+        Alert.alert('Overflow Reported', 'An overflowing bin has been reported.');
+      }
+    } catch (error) {
+      console.error('Error reporting overflow:', error);
+      Alert.alert('Failed to report overflowing bin');
+    }
+  };
+
+  const fetchCollectionSchedule = async () => {
+    try {
+      const scheduleSnapshot = await getDocs(collection(db, 'collectionSchedules'));
+      const scheduleList = scheduleSnapshot.docs.map(doc => doc.data());
+      setCollectionSchedule(scheduleList);
+    } catch (error) {
+      console.error('Error fetching schedule:', error);
+      Alert.alert('Failed to fetch collection schedule');
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Resident Dashboard</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      {loading ? (
+        <Text>Loading...</Text>
+      ) : locationExists ? (
+        <View style={styles.section}>
+          <Text style={styles.title}>Your Location</Text>
+          <Text>Latitude: {userLocation.latitude}</Text>
+          <Text>Longitude: {userLocation.longitude}</Text>
+          <TouchableOpacity style={styles.button} onPress={updateLocationInFirestore}>
+            <Text style={styles.buttonText}>Update My Location</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.section}>
+          <Text style={styles.title}>Your location is not set yet.</Text>
+          <TouchableOpacity style={styles.button} onPress={updateLocationInFirestore}>
+            <Text style={styles.buttonText}>Set My Location</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-      <Text style={styles.sectionTitle}>Dustbin Status</Text>
-      <FlatList
-        data={bins}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <View style={[styles.binBox, { backgroundColor: getColor(item.status) }]}>
-            <Text style={styles.binText}>Bin at {item.location}</Text>
-            <Text>Status: {item.status}</Text>
-          </View>
+      <View style={styles.section}>
+        <Text style={styles.title}>Bin Services</Text>
+        <TouchableOpacity style={styles.button} onPress={requestBinPickup}>
+          <Text style={styles.buttonText}>Request Bin Pickup</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.button} onPress={reportOverflowingBin}>
+          <Text style={styles.buttonText}>Report Overflowing Bin</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.title}>Collection Schedule</Text>
+        {collectionSchedule.length > 0 ? (
+          collectionSchedule.map((schedule, index) => (
+            <View key={index} style={styles.scheduleItem}>
+              <Text>📅 {schedule.day}: {schedule.time}</Text>
+            </View>
+          ))
+        ) : (
+          <Text>No collection schedule available yet.</Text>
         )}
-      />
-
-      <Text style={styles.sectionTitle}>Enter Your Location or Bin Location</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter location..."
-        value={location}
-        onChangeText={setLocation}
-      />
-
-      <Text style={styles.sectionTitle}>Driver Tracking</Text>
-      <FlatList
-        data={drivers}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <Text style={styles.driverText}>{item.name} is at {item.currentLocation}</Text>
-        )}
-      />
-
-      <Text style={styles.sectionTitle}>Payment Method</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g. MTN Mobile Money, Card..."
-        value={paymentMethod}
-        onChangeText={setPaymentMethod}
-      />
-
-      <TouchableOpacity style={styles.submitButton}>
-        <Text style={styles.buttonText}>Submit Info</Text>
-      </TouchableOpacity>
-    </View>
+      </View>
+    </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, 
-    padding: 20, 
-    backgroundColor: '#fff' 
+  container: {
+    padding: 20,
+    backgroundColor: '#f2f2f2',
   },
-  header: { fontSize: 26, 
-    fontWeight: 'bold', 
-    marginBottom: 10, 
-    color: '#8B0000'
+  section: {
+    marginBottom: 30,
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 10,
+    elevation: 3,
   },
-  sectionTitle: { fontSize: 18, 
-    marginTop: 15, 
-    fontWeight: 'bold' },
-  binBox: { padding: 15, 
-    borderRadius: 8, 
-    marginTop: 10 },
-  binText: { fontWeight: 'bold', 
-    color: '#fff' },
-  input: { height: 45, 
-    borderColor: '#ccc', 
-    borderWidth: 1, 
-    borderRadius: 8, 
-    marginTop: 10, 
-    paddingHorizontal: 10 },
-  driverText: { fontSize: 16, marginTop: 5 },
-  submitButton: { backgroundColor: '#8B0000', padding: 15, borderRadius: 10, marginTop: 20 },
-  buttonText: { color: '#fff', textAlign: 'center', fontWeight: 'bold' }
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'red',
+    marginBottom: 10,
+  },
+  button: {
+    backgroundColor: 'red',
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  scheduleItem: {
+    paddingVertical: 5,
+  },
 });
-
-export default ResidentDashboard;

@@ -1,7 +1,7 @@
 // src/screens/LoginScreen.js
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 
@@ -17,11 +17,32 @@ export default function LoginScreen({ navigation }) {
       const user = userCredential.user;
 
       if (!user.emailVerified) {
-        Alert.alert('Email not verified', 'Please verify your email before logging in.');
+        Alert.alert(
+          'Email not verified',
+          'Please verify your email before logging in.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Resend Email',
+              onPress: async () => {
+                try {
+                  await sendEmailVerification(user);
+                  Alert.alert('Verification Sent', 'A new verification email has been sent.');
+                } catch (error) {
+                  console.error(error);
+                  Alert.alert('Error', 'Failed to send verification email.');
+                }
+              }
+            }
+          ]
+        );
+
+        await auth.signOut(); // Sign out unverified user
         setLoading(false);
         return;
       }
 
+      // Get Firestore user document
       const userDocRef = doc(db, 'users', user.uid);
       const userSnapshot = await getDoc(userDocRef);
       
@@ -32,6 +53,7 @@ export default function LoginScreen({ navigation }) {
       const userData = userSnapshot.data();
       const role = userData.role;
 
+      // Navigate based on role
       if (role === 'resident') {
         navigation.replace('ResidentDashboard');
       } else if (role === 'staff') {
@@ -41,6 +63,7 @@ export default function LoginScreen({ navigation }) {
       } else {
         Alert.alert('Unknown Role', 'Your user role is not recognized.');
       }
+
     } catch (error) {
       console.error(error);
       Alert.alert('Login Error', error.message);
@@ -84,42 +107,10 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, 
-  backgroundColor: '#f2f2f2', 
-  justifyContent: 'center', 
-  padding: 20 
-},
-  header: { 
-  fontSize: 32, 
-  fontWeight: 'bold', 
-  color: 'red', 
-  marginBottom: 30, 
-  textAlign: 'center' 
-},
-  input: { height: 50, 
-  borderColor: 'red',
-  borderWidth: 1, 
-  borderRadius: 10, 
-  paddingHorizontal: 15, 
-  marginBottom: 15, 
-  backgroundColor: '#fff', 
-  color: '#000' 
-},
-  button: { 
-  backgroundColor: 'red', 
-  paddingVertical: 15, 
-  borderRadius: 10, 
-  marginTop: 10, 
-  alignItems: 'center' 
-},
-  buttonText: { 
-  color: '#fff', 
-  fontWeight: '600', 
-  fontSize: 16 
-},
-  linkText: { 
-  color: 'red', 
-  textAlign: 'center', 
-  marginTop: 20 
-},
+  container: { flex: 1, backgroundColor: '#f2f2f2', justifyContent: 'center', padding: 20 },
+  header: { fontSize: 32, fontWeight: 'bold', color: 'red', marginBottom: 30, textAlign: 'center' },
+  input: { height: 50, borderColor: 'red', borderWidth: 1, borderRadius: 10, paddingHorizontal: 15, marginBottom: 15, backgroundColor: '#fff', color: '#000' },
+  button: { backgroundColor: 'red', paddingVertical: 15, borderRadius: 10, marginTop: 10, alignItems: 'center' },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  linkText: { color: 'red', textAlign: 'center', marginTop: 20 },
 });

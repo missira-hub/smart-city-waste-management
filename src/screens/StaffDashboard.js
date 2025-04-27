@@ -1,151 +1,192 @@
-import React, { useState } from 'react';
-import { View, Text, Button, TextInput, StyleSheet, FlatList, Alert } from 'react-native';
+// src/screens/StaffDashboard.js
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { getAuth } from 'firebase/auth';
+import { db } from '../firebaseConfig';
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 
-// Mock Data for Assigned Routes and Bin Conditions
-const collectionRoutes = [
-  {
-    routeId: 1,
-    routeName: "Route A",
-    staffName: "John Doe",
-    bins: [
-      { binId: "Bin 1", status: "Empty", condition: "Good" },
-      { binId: "Bin 2", status: "Half-Full", condition: "Good" },
-      { binId: "Bin 3", status: "Full", condition: "Needs Cleaning" },
-    ],
-  },
-  {
-    routeId: 2,
-    routeName: "Route B",
-    staffName: "Jane Smith",
-    bins: [
-      { binId: "Bin 4", status: "Empty", condition: "Good" },
-      { binId: "Bin 5", status: "Full", condition: "Needs Repair" },
-    ],
-  },
-];
+export default function StaffDashboard() {
+  const [assignedBins, setAssignedBins] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-const StaffDashboard = () => {
-  const [binCondition, setBinCondition] = useState("");
-  const [selectedBin, setSelectedBin] = useState("");
+  useEffect(() => {
+    fetchAssignedBins();
+  }, []);
 
-  // Handle Status Update
-  const handleUpdateStatus = (binId) => {
-    Alert.alert("Status Update", `Collection status for ${binId} updated!`);
+  const fetchAssignedBins = async () => {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (user) {
+        const binsRef = collection(db, 'bins');
+        const q = query(binsRef, where('assignedStaff', '==', user.uid));
+        const querySnapshot = await getDocs(q);
+
+        const bins = [];
+        querySnapshot.forEach((docSnap) => {
+          bins.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        setAssignedBins(bins);
+      }
+    } catch (error) {
+      console.error('Error fetching bins:', error);
+      Alert.alert('Error', 'Failed to load assigned bins.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handle Report Bin Condition
-  const handleReportCondition = () => {
-    if (binCondition.trim() === "") {
-      Alert.alert("Error", "Please provide a condition description.");
-    } else {
-      Alert.alert("Report Submitted", `Condition for ${selectedBin} reported: ${binCondition}`);
-      setBinCondition(""); // Reset input after submission
+  const updateCollectionStatus = async (binId, newStatus) => {
+    try {
+      const binRef = doc(db, 'bins', binId);
+      await updateDoc(binRef, { collectionStatus: newStatus });
+
+      Alert.alert('Success', `Collection status updated to "${newStatus}".`);
+      fetchAssignedBins(); // Refresh after update
+    } catch (error) {
+      console.error('Error updating status:', error);
+      Alert.alert('Error', 'Failed to update collection status.');
     }
+  };
+
+  const reportBinCondition = async (binId, condition) => {
+    try {
+      const binRef = doc(db, 'bins', binId);
+      await updateDoc(binRef, { reportedCondition: condition });
+
+      Alert.alert('Success', `Reported bin condition: "${condition}".`);
+      fetchAssignedBins(); // Refresh after report
+    } catch (error) {
+      console.error('Error reporting condition:', error);
+      Alert.alert('Error', 'Failed to report bin condition.');
+    }
+  };
+
+  const renderBinItem = ({ item }) => {
+    if (!item) return null;
+
+    return (
+      <View style={styles.binCard}>
+        <Text style={styles.binText}>Bin ID: {item.id}</Text>
+        <Text style={styles.binText}>
+          Location: {item.location ? `${item.location.latitude}, ${item.location.longitude}` : 'Unknown'}
+        </Text>
+        <Text style={styles.binText}>Collection Status: {item.collectionStatus ?? 'Pending'}</Text>
+        <Text style={styles.binText}>Reported Condition: {item.reportedCondition ?? 'None'}</Text>
+
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => updateCollectionStatus(item.id, 'Collected')}
+          >
+            <Text style={styles.buttonText}>Mark as Collected</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => updateCollectionStatus(item.id, 'Not Collected')}
+          >
+            <Text style={styles.buttonText}>Mark Not Collected</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={styles.reportButton}
+            onPress={() => reportBinCondition(item.id, 'Overflowing')}
+          >
+            <Text style={styles.buttonText}>Report Overflowing</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.reportButton}
+            onPress={() => reportBinCondition(item.id, 'Damaged')}
+          >
+            <Text style={styles.buttonText}>Report Damaged</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Staff Dashboard</Text>
-      
-      {/* Assigned Collection Routes */}
-      <FlatList
-        data={collectionRoutes}
-        keyExtractor={(item) => item.routeId.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.routeContainer}>
-            <Text style={styles.routeTitle}>{item.routeName} (Assigned to {item.staffName})</Text>
-            <FlatList
-              data={item.bins}
-              keyExtractor={(bin) => bin.binId}
-              renderItem={({ bin }) => (
-                <View style={styles.binContainer}>
-                  <Text style={styles.binInfo}>
-                    {bin.binId}: {bin.status} - {bin.condition}
-                  </Text>
-                  <Button title="Mark as Collected" onPress={() => handleUpdateStatus(bin.binId)} />
-                </View>
-              )}
-            />
-          </View>
-        )}
-      />
-      
-      {/* Form to Report Bin Condition */}
-      <View style={styles.reportForm}>
-        <Text style={styles.formTitle}>Report Bin Condition</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Bin Condition"
-          value={binCondition}
-          onChangeText={setBinCondition}
+      <Text style={styles.header}>Staff Dashboard</Text>
+
+      {loading ? (
+        <ActivityIndicator size="large" color="red" />
+      ) : (
+        <FlatList
+          data={assignedBins.filter(bin => bin !== undefined && bin !== null)}
+          keyExtractor={(item) => item.id}
+          renderItem={renderBinItem}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={<Text style={styles.emptyText}>No assigned bins found.</Text>}
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Bin ID"
-          value={selectedBin}
-          onChangeText={setSelectedBin}
-        />
-        <Button title="Submit Report" onPress={handleReportCondition} />
-      </View>
+      )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f2f2f2',
+    paddingTop: 40,
+    paddingHorizontal: 10,
   },
-  title: {
-    fontSize: 24,
+  header: {
+    fontSize: 28,
     fontWeight: 'bold',
+    color: 'red',
     textAlign: 'center',
     marginBottom: 20,
   },
-  routeContainer: {
-    marginBottom: 20,
-    padding: 10,
+  listContent: {
+    paddingBottom: 20,
+  },
+  binCard: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: 'red',
   },
-  routeTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  binText: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: '#333',
   },
-  binContainer: {
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: 10,
   },
-  binInfo: {
-    fontSize: 16,
-  },
-  reportForm: {
-    marginTop: 30,
-    padding: 15,
-    backgroundColor: '#fff',
+  button: {
+    backgroundColor: 'red',
+    padding: 10,
     borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    flex: 0.48,
+    alignItems: 'center',
   },
-  formTitle: {
+  reportButton: {
+    backgroundColor: '#ff7f50',
+    padding: 10,
+    borderRadius: 8,
+    flex: 0.48,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: 'grey',
+    marginTop: 30,
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  input: {
-    height: 40,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    marginBottom: 10,
-    paddingLeft: 10,
-    borderRadius: 5,
   },
 });
-
-export default StaffDashboard;
