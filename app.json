@@ -4,11 +4,10 @@
     "slug": "smart-city-waste-management",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon.png", 
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-icon.png",  
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,19 +16,28 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./src/assets/image/icon.png",  
+        "backgroundColor": "#FFFFFF"
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "INTERNET"
       ],
-      "package": "myprojectandroid.com"
-    }
+      "package": "com.example.smartcitywastemanagement",
+      "versionCode": 1,
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_ANDROID_API_KEY"
+    },
+    "jsEngine": "jsc",  
+    "assetBundlePatterns": ["**/*"]  
   },
   "web": {
-    "favicon": "./src/assets/favicon.png"
-  },
-  "main": "node_modules/expo/AppEntry.js"
+    "favicon": "./src/assets/favicon.png"  
+    }
+  }
 }
+}
+    
+

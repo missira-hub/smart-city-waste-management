@@ -1,52 +1,38 @@
-// firebase.js
+// src/firebaseConfig.js
+
 import { initializeApp } from 'firebase/app';
 import {
-  getAuth,
   initializeAuth,
   getReactNativePersistence,
-  setPersistence,
-  browserLocalPersistence
+  getAuth
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Only import AsyncStorage on mobile
-let ReactNativeAsyncStorage;
-if (Platform.OS !== 'web') {
-  ReactNativeAsyncStorage = require('@react-native-async-storage/async-storage').default;
-}
-
-
-// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCMr4zCQg2konNz7hhZeJuRPA128fPAJRQ",
   authDomain: "sc-waste-management-app.firebaseapp.com",
   databaseURL: "https://sc-waste-management-app-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "sc-waste-management-app",
-  storageBucket: "sc-waste-management-app.firebasestorage.app",
+  storageBucket: "sc-waste-management-app.appspot.com",
   messagingSenderId: "716830739762",
   appId: "1:716830739762:web:0c965ea893a49a80235b2b",
   measurementId: "G-LMB1G56KBY"
 };
-// 🚀 Initialize Firebase
+
 const app = initializeApp(firebaseConfig);
 
-// 🔐 Initialize Auth with persistence per platform
+// ✅ Important: Only call getAuth *after* initializeAuth
 let auth;
 
-if (Platform.OS === 'web') {
-  auth = getAuth(app);
-  setPersistence(auth, browserLocalPersistence).catch((err) =>
-    console.error('Failed to set web persistence:', err)
-  );
-} else {
+try {
   auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+    persistence: getReactNativePersistence(AsyncStorage),
   });
+} catch (error) {
+  auth = getAuth(app); // fallback for hot reload
 }
 
-// 🔥 Initialize Firestore (works for both platforms)
 const db = getFirestore(app);
 
-// 👇 Export everything
-export { auth, db, app };
+export { app, auth, db };
